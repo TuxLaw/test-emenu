@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ravintola Menu - Editori</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script src="generate_preview.js"></script>
+  <script src="generate_emenu.js"></script>
+
+  <style>
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1f2937; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    input[type=range] { accent-color: #3b82f6; }
+    [v-cloak] { display: none; }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-200 h-screen overflow-hidden text-sm select-none">
+
+<div id="app" v-cloak class="flex flex-col-reverse md:flex-row h-full w-full">
+  <input type="file" ref="fileInput" accept=".html" @change="importHtml" class="hidden">
+
+  <!-- VASEN PANEELI: EDITOR -->
+  <div class="w-full md:w-[500px] flex flex-col h-[60vh] md:h-full border-t md:border-t-0 md:border-r border-gray-700 bg-gray-800 shrink-0 shadow-2xl z-10 select-auto overflow-hidden">
+
+    <div class="p-4 border-b border-gray-700 flex flex-col gap-3 bg-gray-900 shadow-md z-20">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <h1 class="text-base sm:text-lg font-bold text-white whitespace-nowrap"><i class="fa-solid fa-utensils mr-2 text-blue-400"></i> Menu Editori</h1>
+        <div class="flex flex-wrap gap-2 justify-end w-full sm:w-auto">
+          <button @click="clearMenu" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1.5 rounded shadow transition text-xs font-bold uppercase" title="Tyhjennä ruokalista">
+            <i class="fa-solid fa-trash"></i> <span class="hidden lg:inline ml-1">Tyhjennä</span>
+          </button>
+          <button @click="$refs.fileInput.click()" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1.5 rounded shadow transition text-xs font-bold uppercase">
+            <i class="fa-solid fa-upload mr-1"></i> Tuo
+          </button>
+          <button @click="exportHtml" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1.5 rounded shadow transition text-xs font-bold uppercase">
+            <i class="fa-solid fa-file-code mr-1"></i> Vie HTML
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Editorin sisältö -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+
+      <!-- NAVIGOINTI TABS -->
+      <div class="flex flex-col gap-2 mb-4 bg-gray-700 p-2 rounded shadow-inner">
+        <div class="flex flex-wrap gap-1 justify-center sm:justify-start">
+          <button @click="activeTab = 'header'" :class="tabClass('header')">Yläpalkki</button>
+          <button @click="activeTab = 'footer'" :class="tabClass('footer')">Alapalkki</button>
+          <button @click="activeTab = 'styles'" :class="tabClass('styles')"><i class="fa-solid fa-palette"></i> Tyylit</button>
+        </div>
+        <div class="flex flex-wrap gap-1 border-t border-gray-600 pt-2 justify-center sm:justify-start">
+          <button v-for="(col, i) in state.columns" :key="'tab-col-'+i" @click="activeTab = 'col'+i" :class="tabClass('col'+i)">
+            {{ col.title || ('Sar. ' + (i+1)) }}
+          </button>
+        </div>
+      </div>
+
+      <!-- TYYLIT -->
+      <div v-if="activeTab === 'styles'" class="space-y-4 animate-fade-in">
+        <div class="bg-gray-900 p-4 rounded border border-gray-700 space-y-4">
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase">Otsikoiden Fontti</label>
+            <select v-model="state.styles.fontHeading" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+              <option value="Playfair Display">Playfair Display</option>
+              <option value="Merriweather">Merriweather</option>
+              <option value="Montserrat">Montserrat</option>
+              <option value="Oswald">Oswald</option>
+              <option value="Roboto Slab">Roboto Slab</option>
+              <option value="Lora">Lora</option>
+              <option value="Cinzel">Cinzel</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase">Tekstin Fontti</label>
+            <select v-model="state.styles.fontBody" class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+              <option value="Lato">Lato</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Open Sans">Open Sans</option>
+              <option value="Inter">Inter</option>
+              <option value="Poppins">Poppins</option>
+              <option value="Nunito">Nunito</option>
+              <option value="Ubuntu">Ubuntu</option>
+            </select>
+          </div>
+          <div class="pt-2 border-t border-gray-700">
+            <label class="block text-gray-400 text-xs font-bold mb-2 uppercase flex justify-between mt-2">
+              <span>Sisällön Koko (Ruokalista)</span>
+              <span class="text-blue-400">{{ state.styles.fontSizeContent }}px</span>
+            </label>
+            <input type="range" v-model="state.styles.fontSizeContent" min="16" max="40" step="1" class="w-full cursor-pointer">
+          </div>
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-2 uppercase flex justify-between">
+              <span>Palkkien Koko (Ylä/alaotsikot)</span>
+              <span class="text-blue-400">{{ state.styles.fontSizeBars }}px</span>
+            </label>
+            <input type="range" v-model="state.styles.fontSizeBars" min="16" max="40" step="1" class="w-full cursor-pointer">
+          </div>
+
+          <!-- TAUSTAN ASETUKSET -->
+          <div class="pt-2 border-t border-gray-700">
+            <label class="block text-gray-400 text-xs font-bold mb-2 uppercase">Taustan Väri</label>
+            <div class="flex gap-2 items-center">
+              <input type="color" v-model="state.styles.bgColor" class="w-10 h-8 rounded cursor-pointer bg-gray-800 border border-gray-600">
+              <input type="text" v-model="state.styles.bgColor" class="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-white text-xs focus:border-blue-500 focus:outline-none">
+            </div>
+          </div>
+          <div class="pt-2 border-t border-gray-700">
+            <label class="block text-gray-400 text-xs font-bold mb-2 uppercase">Taustakuva (JPG/PNG)</label>
+            <div class="flex items-center gap-3">
+              <input type="file" id="bgUploader" class="hidden" accept="image/*" @change="handleBgUpload">
+              <label for="bgUploader" class="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 text-xs font-bold uppercase rounded border border-gray-500 text-white cursor-pointer transition shadow">
+                <i class="fa-solid fa-image mr-1"></i> Lataa Kuva
+              </label>
+              <button v-if="state.styles.bgImage" @click="state.styles.bgImage = ''" class="bg-red-900/50 text-red-300 hover:bg-red-800 hover:text-white px-2 py-1 text-xs uppercase font-bold rounded border border-red-700 transition">
+                <i class="fa-solid fa-trash mr-1"></i> Poista
+              </button>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-2 leading-tight">Lataa taustakuva suoraan editoriin, jotta se tallentuu projektiin koodattuna. Näin tuotettu HTML-tiedosto ei tarvitse erillisiä kuvatiedostoja toimiakseen.</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- YLÄPALKKI -->
+      <div v-if="activeTab === 'header'" class="space-y-4 animate-fade-in">
+        <div>
+          <label class="block text-gray-400 text-xs font-bold mb-1 uppercase">Pääotsikko</label>
+          <input v-model="state.header.title" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-gray-400 text-xs font-bold mb-1 uppercase">Hinnat yläpalkissa</label>
+          <div v-for="(p, i) in state.header.prices" :key="i" class="flex gap-2 mb-2">
+            <input v-model="p.label" placeholder="Tyyppi (esim. norm)" class="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1 focus:border-blue-500 focus:outline-none">
+            <input v-model="p.value" placeholder="Hinta" class="w-20 bg-gray-900 border border-gray-600 rounded px-2 py-1 focus:border-blue-500 focus:outline-none">
+            <button @click="state.header.prices.splice(i, 1)" class="bg-red-600/80 hover:bg-red-500 px-3 rounded"><i class="fa-solid fa-trash"></i></button>
+          </div>
+          <button @click="state.header.prices.push({label:'', value:''})" class="mt-1 bg-gray-700 hover:bg-gray-600 px-3 py-1.5 text-xs font-bold uppercase rounded w-full border border-gray-600">
+            + Lisää Hinta
+          </button>
+        </div>
+      </div>
+
+      <!-- SARAKKEET JA KORTIT -->
+      <div v-for="(col, colIndex) in state.columns" :key="'col-'+colIndex" v-show="activeTab === 'col'+colIndex" class="space-y-4 animate-fade-in">
+        <div class="grid grid-cols-2 gap-3 mb-6 bg-gray-900 p-3 rounded border border-gray-700">
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase">Sarakkeen Otsikko</label>
+            <input v-model="col.title" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white focus:border-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-gray-400 text-xs font-bold mb-1 uppercase">Alaotsikko</label>
+            <input v-model="col.subtitle" placeholder="(esim. valitse 1-2)" class="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white focus:border-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div v-for="(card, cardIndex) in col.cards" :key="cardIndex"
+               class="bg-gray-700 p-3 rounded-md border border-gray-600 shadow-sm relative transition-all duration-200"
+               @dragover.prevent
+               @drop="onDrop($event, colIndex, cardIndex)">
+
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-600"
+                 draggable="true"
+                 @dragstart="onDragStart($event, colIndex, cardIndex)"
+                 @dragend="onDragEnd">
+              <span class="font-bold text-gray-300 cursor-move flex items-center gap-1 select-none" title="Raahaa järjestääksesi">
+                <i class="fa-solid fa-grip-vertical text-gray-500 px-2 py-1 hover:text-white transition"></i> Osa
+              </span>
+              <div class="flex space-x-1">
+                <button @click="moveCard(colIndex, cardIndex, -1)" class="bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded" title="Siirrä ylös"><i class="fa-solid fa-arrow-up"></i></button>
+                <button @click="moveCard(colIndex, cardIndex, 1)" class="bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded" title="Siirrä alas"><i class="fa-solid fa-arrow-down"></i></button>
+                <button @click="col.cards.splice(cardIndex, 1)" class="bg-red-600/80 hover:bg-red-500 px-2 py-1 rounded ml-2" title="Poista"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              <div class="flex gap-2">
+                <div class="flex-1">
+                  <label class="block text-gray-400 text-[10px] font-bold uppercase mb-0.5">Ruoan Nimi</label>
+                  <input v-model="card.name" placeholder="Esim. Falafelit" class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1.5 focus:border-blue-500 focus:outline-none font-bold">
+                </div>
+                <div class="w-24">
+                  <label class="block text-gray-400 text-[10px] font-bold uppercase mb-0.5">Hinta</label>
+                  <input v-model="card.price" placeholder="+2€" class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1.5 focus:border-blue-500 focus:outline-none">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-gray-400 text-[10px] font-bold uppercase mb-0.5">Kuvaus</label>
+                <input v-model="card.desc" placeholder="Ruoan lisäkuvaus" class="w-full bg-gray-900 border border-gray-600 rounded px-2 py-1.5 focus:border-blue-500 focus:outline-none">
+              </div>
+
+              <!-- ALLERGEENIT PILLERIT -->
+              <div class="bg-gray-800 p-2 rounded border border-gray-700">
+                <label class="block text-gray-400 text-[10px] font-bold uppercase mb-1">Allergeenit</label>
+                <div class="flex flex-wrap gap-1 mb-2 min-h-[28px] bg-gray-900 p-1.5 rounded border border-gray-600">
+                  <div v-for="(alg, idx) in card.allergens" :key="idx" class="flex items-center bg-gray-800 border border-gray-500 rounded overflow-hidden shadow-inner text-xs text-orange-300 font-semibold">
+                    <span class="px-1.5 py-0.5">{{ alg }}</span>
+                    <button @click="removeAllergen(card, idx)" class="px-1.5 py-0.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 border-l border-gray-600"><i class="fa-solid fa-times"></i></button>
+                  </div>
+                  <span v-if="!card.allergens || card.allergens.length === 0" class="text-gray-500 text-[10px] px-1 py-0.5 uppercase tracking-wide">Ei allergeeneja</span>
+                </div>
+                <div class="flex gap-1">
+                  <select v-model="card.newAllergen" class="flex-1 bg-gray-900 border border-gray-600 rounded px-1 py-1.5 text-xs focus:border-blue-500 focus:outline-none text-white cursor-pointer">
+                    <option value="">- Valitse lisättävä -</option>
+                    <option v-for="opt in allergenOptions" :key="opt" :value="opt">{{ opt }}</option>
+                    <option value="custom">Muu (kirjoita)...</option>
+                  </select>
+                  <input v-if="card.newAllergen === 'custom'" v-model="card.customAllergen" placeholder="Muu..." class="w-24 bg-gray-900 border border-gray-600 rounded px-1.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none text-orange-300">
+                  <button @click="addAllergen(card)" class="bg-gray-600 hover:bg-gray-500 px-3 rounded text-xs text-white border border-gray-500 font-bold transition"><i class="fa-solid fa-plus"></i></button>
+                </div>
+              </div>
+
+              <!-- PILLERIT JA KUVA E-MENUUN -->
+              <div class="bg-gray-800 p-2 rounded border border-gray-700">
+                <label class="block text-gray-400 text-[10px] font-bold uppercase mb-1">Raaka-aineet</label>
+                <div class="flex flex-wrap gap-1.5 mb-2">
+                  <div v-for="(pill, pIdx) in card.pills" :key="pIdx" class="flex items-center bg-gray-900 border border-gray-600 rounded overflow-hidden shadow-inner">
+                    <input v-model="pill.name" placeholder="Raaka-aine" class="w-24 sm:w-28 bg-transparent text-xs px-2 py-1 outline-none text-white focus:bg-gray-700">
+                    <button @click="card.pills.splice(pIdx, 1)" class="px-2 h-full text-gray-400 hover:text-red-400 hover:bg-gray-700 border-l border-gray-700"><i class="fa-solid fa-times"></i></button>
+                  </div>
+                </div>
+                <button @click="card.pills.push({name: ''})" class="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white uppercase font-bold tracking-wide w-full border border-gray-600 mb-2">
+                  + Lisää raaka-aine
+                </button>
+
+                <div class="border-t border-gray-700 pt-2 flex items-center justify-between">
+                  <label class="block text-gray-400 text-[10px] font-bold uppercase">Kuva (E-Menu)</label>
+                  <div class="flex items-center gap-2">
+                    <img v-if="card.image" :src="card.image" class="h-8 w-8 object-cover rounded border border-gray-500 cursor-pointer" @click="document.getElementById('file-'+colIndex+'-'+cardIndex).click()">
+                    <button v-if="card.image" @click="card.image = ''" class="text-gray-400 hover:text-red-400" title="Poista kuva"><i class="fa-solid fa-trash"></i></button>
+                    <input :id="'file-'+colIndex+'-'+cardIndex" type="file" class="hidden" accept="image/*" @change="e => handleImageUpload(e, card)">
+                    <label v-if="!card.image" :for="'file-'+colIndex+'-'+cardIndex" class="cursor-pointer bg-gray-700 hover:bg-gray-600 px-2 py-1 text-[10px] uppercase font-bold rounded border border-gray-500 text-white">
+                      <i class="fa-solid fa-camera mr-1"></i> Lisää kuva
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <button @click="addCard(colIndex)" class="w-full py-2 bg-gray-700 hover:bg-gray-600 border border-gray-500 border-dashed rounded text-gray-300 font-bold uppercase text-xs transition">
+            <i class="fa-solid fa-plus mr-1"></i> Lisää Uusi Osa
+          </button>
+        </div>
+      </div>
+
+      <!-- ALAPALKKI (TOPPINGS) -->
+      <div v-if="activeTab === 'footer'" class="space-y-4 animate-fade-in">
+        <div>
+          <label class="block text-gray-400 text-xs font-bold mb-1 uppercase">Topping Otsikko</label>
+          <input v-model="state.footer.title" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-gray-400 text-xs font-bold mb-1 uppercase">Toppings / Extrat</label>
+
+          <div v-for="(t, i) in state.footer.toppings" :key="i" class="flex flex-col gap-2 mb-3 p-2 bg-gray-800 border border-gray-700 rounded items-start shadow-sm">
+            <div class="flex gap-2 w-full">
+              <input v-model="t.name" placeholder="Täytteen Nimi" class="flex-1 bg-gray-900 border border-gray-600 rounded px-2 py-1.5 font-bold focus:border-blue-500 focus:outline-none">
+              <button @click="state.footer.toppings.splice(i, 1)" class="bg-red-600/80 hover:bg-red-500 px-3 py-1.5 rounded"><i class="fa-solid fa-trash"></i></button>
+            </div>
+
+            <div class="w-full border-t border-gray-700 pt-2">
+              <label class="block text-gray-400 text-[10px] font-bold uppercase mb-1">Allergeenit</label>
+              <div class="flex flex-wrap gap-1 mb-2 min-h-[28px] bg-gray-900 p-1.5 rounded border border-gray-600">
+                <div v-for="(alg, idx) in t.allergens" :key="idx" class="flex items-center bg-gray-800 border border-gray-500 rounded overflow-hidden shadow-inner text-xs text-orange-300 font-semibold">
+                  <span class="px-1.5 py-0.5">{{ alg }}</span>
+                  <button @click="removeAllergen(t, idx)" class="px-1.5 py-0.5 text-gray-400 hover:text-red-400 hover:bg-gray-700 border-l border-gray-600"><i class="fa-solid fa-times"></i></button>
+                </div>
+                <span v-if="!t.allergens || t.allergens.length === 0" class="text-gray-500 text-[10px] px-1 py-0.5 uppercase tracking-wide">Ei allergeeneja</span>
+              </div>
+              <div class="flex gap-1">
+                <select v-model="t.newAllergen" class="flex-1 bg-gray-900 border border-gray-600 rounded px-1 py-1.5 text-xs focus:border-blue-500 focus:outline-none text-white cursor-pointer">
+                  <option value="">- Valitse lisättävä -</option>
+                  <option v-for="opt in allergenOptions" :key="opt" :value="opt">{{ opt }}</option>
+                  <option value="custom">Muu...</option>
+                </select>
+                <input v-if="t.newAllergen === 'custom'" v-model="t.customAllergen" placeholder="Muu..." class="w-24 bg-gray-900 border border-gray-600 rounded px-1.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none text-orange-300">
+                <button @click="addAllergen(t)" class="bg-gray-600 hover:bg-gray-500 px-3 rounded text-xs text-white border border-gray-500 font-bold transition"><i class="fa-solid fa-plus"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <button @click="state.footer.toppings.push({name:'', allergen:'', allergens:[], newAllergen:'', customAllergen:''})" class="mt-2 bg-gray-700 hover:bg-gray-600 px-3 py-2 text-xs font-bold uppercase rounded w-full border border-gray-500 border-dashed text-gray-300 transition">
+            <i class="fa-solid fa-plus mr-1"></i> Lisää Topping
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- OIKEA PANEELI: LIVE PREVIEW & PANNING CANVAS -->
+  <div class="w-full h-[40vh] md:h-full md:flex-1 bg-gray-950 relative overflow-hidden outline-none border-b md:border-b-0 md:border-l border-gray-700"
+       ref="viewportRef"
+       :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
+       @mousedown.prevent="startDrag"
+       @mousemove="doDrag"
+       @mouseup="stopDrag"
+       @mouseleave="stopDrag"
+       @wheel.prevent="handleWheel"
+       @touchstart.prevent="startDragTouch"
+       @touchmove="doDragTouch"
+       @touchend="stopDrag">
+
+    <!-- Työkalut alakulmassa (Keskitä) -->
+    <div class="absolute bottom-4 right-4 md:bottom-6 md:right-6 z-20">
+       <button @click="resetView" class="bg-gray-800 text-white p-2 px-4 rounded-lg hover:bg-gray-700 font-bold text-xs uppercase shadow-xl border border-gray-700" title="Palauta näkymä">Keskitä</button>
+    </div>
+
+    <!-- PANNING WRAPPER (Origin top-left) -->
+    <div class="absolute top-0 left-0 will-change-transform"
+         :style="{ transform: `translate(${panX}px, ${panY}px) scale(${zoom})`, transformOrigin: '0 0' }">
+
+      <!-- 1920x1080 KIINTEÄ IFRAME. -->
+      <div class="w-[1920px] h-[1080px] bg-white relative shadow-[0_0_80px_rgba(0,0,0,0.6)] ring-1 ring-gray-700 overflow-hidden pointer-events-none">
+        <iframe :srcdoc="generatedHtml" class="w-full h-full border-none pointer-events-none"></iframe>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, reactive, computed, ref, onMounted } = Vue;
+
+createApp({
+  setup() {
+    const activeTab = ref('styles');
+    const fileInput = ref(null);
+    const viewportRef = ref(null);
+
+    // Kaikki käytössä olevat allergeenit pudotusvalikkoon
+    const allergenOptions = [
+      'G', 'L', 'M', 'VL', 'VEG',
+      '(sis. maito)', '(sis. gluteeni)', '(sis. kananmuna)',
+      '(sis. kala)', '(sis. pähkinää)', '(sis. maapähkinää)',
+      '(sis. soijaa)', '(sis. äyriäisiä)', '(sis. nilviäisiä)',
+      '(sis. selleriä)', '(sis. sinappia)', '(sis. seesamia)',
+      '(sis. sulfiitteja)', '(sis. lupiinia)'
+    ];
+
+    // Lisää uuden allergeenin listaan
+    const addAllergen = (item) => {
+      if (!item.allergens) item.allergens = [];
+      let toAdd = item.newAllergen;
+      if (toAdd === 'custom') toAdd = item.customAllergen;
+
+      if (toAdd && toAdd.trim() !== '') {
+        item.allergens.push(toAdd.trim());
+        item.allergen = item.allergens.join(' ');
+      }
+      item.newAllergen = '';
+      item.customAllergen = '';
+    };
+
+    // Poistaa allergeenin listasta
+    const removeAllergen = (item, idx) => {
+      if (!item.allergens) return;
+      item.allergens.splice(idx, 1);
+      item.allergen = item.allergens.join(' ');
+    };
+
+    // DRAG AND DROP - KORTTIEN JÄRJESTELY
+    const draggedCardInfo = ref({ colIndex: null, cardIndex: null });
+
+    const onDragStart = (e, colIndex, cardIndex) => {
+      draggedCardInfo.value = { colIndex, cardIndex };
+      const cardEl = e.target.closest('.bg-gray-700');
+      if (cardEl) {
+        e.dataTransfer.setDragImage(cardEl, 20, 20);
+        setTimeout(() => cardEl.classList.add('opacity-50'), 0);
+      }
+    };
+
+    const onDragEnd = (e) => {
+      const cardEl = e.target.closest('.bg-gray-700');
+      if (cardEl) cardEl.classList.remove('opacity-50');
+      draggedCardInfo.value = { colIndex: null, cardIndex: null };
+    };
+
+    const onDrop = (e, colIndex, cardIndex) => {
+      e.preventDefault();
+      const startCol = draggedCardInfo.value.colIndex;
+      const startIndex = draggedCardInfo.value.cardIndex;
+
+      if (startCol !== null && startCol === colIndex && startIndex !== cardIndex) {
+        const arr = state.columns[colIndex].cards;
+        const item = arr.splice(startIndex, 1)[0];
+        arr.splice(cardIndex, 0, item);
+      }
+    };
+
+    // KUVAN PIENENNYS JA TALLENNUS BASE64 MUOTOON
+    const handleImageUpload = (e, card) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 600;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+          } else {
+            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          card.image = canvas.toDataURL('image/jpeg', 0.85); // Pienennetty kuva e-menuun
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = ''; // Nollaa input
+    };
+
+    // KUVAN PIENENNYS (TAUSTAKUVA)
+    const handleBgUpload = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1920;
+          const MAX_HEIGHT = 1080;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+          } else {
+            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          state.styles.bgImage = canvas.toDataURL('image/jpeg', 0.85);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    };
+
+    // ===========================
+    // PANNING & ZOOM
+    // ===========================
+    const panX = ref(0);
+    const panY = ref(0);
+    const zoom = ref(1);
+    const isDragging = ref(false);
+
+    let startMouseX = 0, startMouseY = 0;
+    let initialPanX = 0, initialPanY = 0;
+
+    const startDrag = (e) => {
+      if (e.button !== 0) return;
+      isDragging.value = true;
+      startMouseX = e.clientX;
+      startMouseY = e.clientY;
+      initialPanX = panX.value;
+      initialPanY = panY.value;
+    };
+
+    const doDrag = (e) => {
+      if (!isDragging.value) return;
+      panX.value = initialPanX + (e.clientX - startMouseX);
+      panY.value = initialPanY + (e.clientY - startMouseY);
+    };
+
+    const startDragTouch = (e) => {
+      if(e.touches.length === 1) {
+        isDragging.value = true;
+        startMouseX = e.touches[0].clientX;
+        startMouseY = e.touches[0].clientY;
+        initialPanX = panX.value;
+        initialPanY = panY.value;
+      }
+    };
+
+    const doDragTouch = (e) => {
+      if (!isDragging.value || e.touches.length !== 1) return;
+      panX.value = initialPanX + (e.touches[0].clientX - startMouseX);
+      panY.value = initialPanY + (e.touches[0].clientY - startMouseY);
+    };
+
+    const stopDrag = () => isDragging.value = false;
+
+    const handleWheel = (e) => {
+      if (!viewportRef.value) return;
+      const rect = viewportRef.value.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const oldZoom = zoom.value;
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(0.1, Math.min(oldZoom * factor, 3));
+
+      const canvasX = (mouseX - panX.value) / oldZoom;
+      const canvasY = (mouseY - panY.value) / oldZoom;
+
+      zoom.value = newZoom;
+      panX.value = mouseX - canvasX * newZoom;
+      panY.value = mouseY - canvasY * newZoom;
+    };
+
+    const resetView = () => {
+      if (!viewportRef.value) return;
+      const rect = viewportRef.value.getBoundingClientRect();
+      const canvasW = 1920;
+      const canvasH = 1080;
+      const scaleX = (rect.width - 40) / canvasW;
+      const scaleY = (rect.height - 40) / canvasH;
+      const newZoom = Math.min(scaleX, scaleY, 1);
+      zoom.value = newZoom;
+      panX.value = (rect.width - canvasW * newZoom) / 2;
+      panY.value = (rect.height - canvasH * newZoom) / 2;
+    };
+
+    onMounted(() => resetView());
+
+    // ===========================
+    // EDITOR STATE
+    // ===========================
+    const state = reactive({
+      styles: {
+        fontHeading: 'Playfair Display',
+        fontBody: 'Lato',
+        fontSizeContent: 24,
+        fontSizeBars: 24,
+        bgImage: '',
+        bgColor: '#4c7253'
+      },
+      header: {
+        title: "Kokoa oma annos 4-7:stä eri herkusta",
+        prices: [
+          { label: "Lähtöhinta: norm", value: "24€" },
+          { label: "pieni", value: "20€" },
+          { label: "lapsi", value: "14€" }
+        ]
+      },
+      columns: [
+        {
+          title: "Pääruoka", subtitle: "(valitse yksi)",
+          cards: [
+            { name: 'Falafelit', desc: '(Kikhernepyörykät)', allergen: '(sis. gluteeni)', allergens: ['(sis. gluteeni)'], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Kaalipyörykät', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Linssipihvit', desc: '', allergen: '(sis. gluteeni)', allergens: ['(sis. gluteeni)'], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Savuseitan', desc: '(Proteiinipommi)', allergen: '(sis. gluteeni)', allergens: ['(sis. gluteeni)'], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Kasvisnakit', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '+2€', pills: [], image: '' },
+            { name: 'Vegekala', desc: 'Sushi-tyyppinen uppopaistettu pihvi', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [ { name: 'Riisi' }, { name: 'Tofu' }, { name: 'Paneer juusto' } ], image: '' },
+            { name: 'Pakora', desc: 'Uppopaistetut herkut taikinalla', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [ { name: 'Bataatti' }, { name: 'Kukkakaali' }, { name: 'Kesäkurpitsa' }, { name: 'Munakoiso' }, { name: 'Paprika' }, { name: 'Sitruuna' }, { name: 'Paneer juusto' } ], image: '' }
+          ]
+        },
+        {
+          title: "Lisuke", subtitle: "(valitse 1-2)",
+          cards: [
+            { name: 'Perunamuusi', desc: 'Kookoskermalla', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Uuniperuna', desc: 'Yrteillä', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Hakuna Batata!', desc: 'Mausteinen bataattipata kookoskermalla', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Kaali-ohramuhennos', desc: '', allergen: '(sis. gluteeni)', allergens: ['(sis. gluteeni)'], newAllergen: '', customAllergen: '', price: '-1€', pills: [], image: '' },
+            { name: 'Lasagne', desc: 'Herkkusienellä ja vihanneksilla', allergen: '(sis. gluteeni)', allergens: ['(sis. gluteeni)'], newAllergen: '', customAllergen: '', price: '+2€', pills: [], image: '' },
+            { name: 'Kasvispata', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [ { name: 'Savupaprikalla' }, { name: 'Kookoskermalla' }, { name: 'Kevyt, ilman mausteita' } ], image: '' },
+            { name: 'Sitruunariisi', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '-1€', pills: [], image: '' },
+            { name: 'Pilahvi', desc: '(Riisi)', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Paella', desc: '(Riisi)', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '+1€', pills: [], image: '' },
+            { name: 'Pushpanna', desc: 'Intialainen monimakuinen riisi', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '+2€', pills: [], image: '' },
+            { name: 'Sak', desc: 'Mausteinen intialainen pinaatti', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [ { name: 'Kookoskermalla' }, { name: 'Smetanalla' } ], image: '' }
+          ]
+        },
+        {
+          title: "Kastike", subtitle: "(valitse 1-2)",
+          cards: [
+            { name: 'Maapähkinä chutney', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Omena chutney', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Earth gifts', desc: 'Nepalilainen mausteinen kastike kookoksella, tomaatilla, maapähkinällä', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Curry', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'YellowFlow', desc: 'Intialainen mieto mausteinen kadhi kookoksella ja vihanneksilla', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Kurpitsasose', desc: '', allergen: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Smetana', desc: '', allergen: '(sis. maito)', allergens: ['(sis. maito)'], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Tomaatti', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [ { name: 'Intialainen chutney' }, { name: 'Mieto tomaatti-kookos' }, { name: 'Ketsuppi' } ], image: '' }
+          ]
+        },
+        {
+          title: "Salaatti", subtitle: "(valitse 1-2)",
+          cards: [
+            { name: 'Hapankaali', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '-1€', pills: [], image: '' },
+            { name: 'Punajuuri maustekurkku', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Punasalaatti', desc: '', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '-1€', pills: [], image: '' },
+            { name: 'Kurkku-tomaatti', desc: '(Tuoresalaatti)', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '-1€', pills: [], image: '' },
+            { name: 'Kreikkalainen', desc: '(Tuoresalaatti)', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Avokadosalaatti', desc: '(Tuore)', allergen: '', allergens: [], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Peruna-sieni', desc: '(Kotimajoneesilla)', allergen: '(maito/veg.)', allergens: ['(maito/veg.)'], newAllergen: '', customAllergen: '', price: '+1€', pills: [], image: '' },
+            { name: 'Porkkanaraaste', desc: '(Kotimajoneesilla)', allergen: '(maito/veg.)', allergens: ['(maito/veg.)'], newAllergen: '', customAllergen: '', price: '-1€', pills: [], image: '' },
+            { name: 'Punajuuriraaste', desc: '(Kotimajoneesilla)', allergen: '(maito/veg.)', allergens: ['(maito/veg.)'], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Riisisaalaatti', desc: '(Kotimajoneesilla)', allergen: '(maito/veg.)', allergens: ['(maito/veg.)'], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' },
+            { name: 'Juuris-Noris', desc: '(Kotimajoneesilla)', allergen: '(maito/veg.)', allergens: ['(maito/veg.)'], newAllergen: '', customAllergen: '', price: '+2€', pills: [], image: '' },
+            { name: 'Sellerijuuri', desc: '(Kotimajoneesilla)', allergen: '(maito/veg.)', allergens: ['(maito/veg.)'], newAllergen: '', customAllergen: '', price: '', pills: [], image: '' }
+          ]
+        }
+      ],
+      footer: {
+        title: "Topping 1€/laji:",
+        toppings: [
+          { name: "Oliivit", allergen: "", allergens: [], newAllergen: "", customAllergen: "" },
+          { name: "Maustekurkut", allergen: "", allergens: [], newAllergen: "", customAllergen: "" },
+          { name: "Wakame merilevä", allergen: "", allergens: [], newAllergen: "", customAllergen: "" },
+          { name: "Inkivääri", allergen: "", allergens: [], newAllergen: "", customAllergen: "" },
+          { name: "Paneer juusto", allergen: "(sis. maito)", allergens: ["(sis. maito)"], newAllergen: "", customAllergen: "" },
+          { name: "Pate", allergen: "", allergens: [], newAllergen: "", customAllergen: "" }
+        ]
+      }
+    });
+
+    const clearMenu = () => {
+      if (confirm('Haluatko varmasti tyhjentää kaikkien sarakkeiden osat? Tätä ei voi perua.')) {
+        state.columns.forEach(col => {
+          col.cards = [];
+        });
+      }
+    };
+
+    const escape = (str) => {
+      if(!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    const tabClass = (name) => `flex-grow text-center px-3 py-1.5 text-xs font-bold rounded transition border ${activeTab.value === name ? 'bg-blue-600 text-white border-blue-500' : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-600'}`;
+
+    const addCard = (colIndex) => {
+      state.columns[colIndex].cards.push({
+        name: 'Uusi Osa', desc: '',
+        allergen: '', allergens: [], newAllergen: '', customAllergen: '',
+        price: '', pills: [], image: ''
+      });
+    };
+
+    const moveCard = (colIndex, cardIndex, dir) => {
+      const arr = state.columns[colIndex].cards;
+      if (cardIndex + dir < 0 || cardIndex + dir >= arr.length) return;
+      const temp = arr[cardIndex];
+      arr[cardIndex] = arr[cardIndex + dir];
+      arr[cardIndex + dir] = temp;
+    };
+
+    const importHtml = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(ev.target.result, 'text/html');
+
+          const styleTag = doc.querySelector('style');
+          if (styleTag) {
+            const cssText = styleTag.textContent;
+            const hMatch = cssText.match(/--font-heading:\s*'([^']+)'/);
+            if (hMatch) state.styles.fontHeading = hMatch[1];
+
+            const bMatch = cssText.match(/--font-body:\s*'([^']+)'/);
+            if (bMatch) state.styles.fontBody = bMatch[1];
+
+            const contentMatch = cssText.match(/--base-font-size-content:\s*(\d+)px/);
+            if (contentMatch) state.styles.fontSizeContent = parseInt(contentMatch[1], 10);
+
+            const barsMatch = cssText.match(/--base-font-size-bars:\s*(\d+)px/);
+            if (barsMatch) state.styles.fontSizeBars = parseInt(barsMatch[1], 10);
+
+            // UUDET: Lue taustaväri ja Base64-kuva tuodusta koodista
+            const bgColorMatch = cssText.match(/--bg-color-fallback:\s*([^;]+);/);
+            if (bgColorMatch) state.styles.bgColor = bgColorMatch[1].trim();
+
+            const bgImageMatch = cssText.match(/--bg-image:\s*url\('([^']+)'\)/);
+            if (bgImageMatch && bgImageMatch[1].startsWith('data:')) {
+                state.styles.bgImage = bgImageMatch[1];
+            }
+          }
+
+          const h1 = doc.querySelector('.header-main h1');
+          if (h1) state.header.title = h1.textContent.trim();
+
+          const priceGroups = doc.querySelectorAll('.price-group');
+          state.header.prices = Array.from(priceGroups).map(pg => ({
+            label: pg.querySelector('.price-label')?.textContent.trim() || '',
+            value: pg.querySelector('.price-badge')?.textContent.trim() || ''
+          }));
+
+          const domCols = doc.querySelectorAll('.column');
+          if (domCols.length > 0) {
+            state.columns = Array.from(domCols).map(domCol => {
+              const colHeader = domCol.querySelector('.col-header');
+              let title = 'Sarake';
+              let subtitle = '';
+              if (colHeader) {
+                const clone = colHeader.cloneNode(true);
+                const span = clone.querySelector('span');
+                if (span) {
+                  subtitle = span.textContent.trim();
+                  span.remove();
+                }
+                title = clone.textContent.trim();
+              }
+
+              const domCards = domCol.querySelectorAll('.menu-card');
+              const cards = Array.from(domCards).map(domCard => {
+                const nameEl = domCard.querySelector('.name');
+                const name = nameEl ? nameEl.textContent.trim() : '';
+
+                const allergenEl = domCard.querySelector('.allergen');
+                let allergen = '';
+                let allergens = [];
+                if (allergenEl && !allergenEl.closest('.sub-item')) {
+                  allergen = allergenEl.textContent.trim();
+                  if (allergen) allergens = [allergen];
+                }
+
+                let descParts = [];
+                const extraEl = domCard.querySelector('.name-extra');
+                if (extraEl) descParts.push(extraEl.textContent.trim());
+
+                const descEl = domCard.querySelector('.desc');
+                if (descEl) descParts.push(descEl.textContent.trim());
+                const desc = descParts.join(' ');
+
+                const priceEl = domCard.querySelector('.price');
+                const price = priceEl ? priceEl.textContent.trim() : '';
+
+                const subItems = domCard.querySelectorAll('.sub-item');
+                const pills = Array.from(subItems).map(si => ({ name: si.textContent.trim() }));
+
+                const imgAttr = domCard.getAttribute('data-image');
+                const image = imgAttr || '';
+
+                return { name, desc, allergen, allergens, newAllergen: '', customAllergen: '', price, pills, image };
+              });
+
+              return { title, subtitle, cards };
+            });
+          }
+
+          const footerTitle = doc.querySelector('.topping-title');
+          if (footerTitle) state.footer.title = footerTitle.textContent.trim();
+
+          const toppingItems = doc.querySelectorAll('.topping-item');
+          if (toppingItems.length > 0) {
+            state.footer.toppings = Array.from(toppingItems).map(ti => {
+              const clone = ti.cloneNode(true);
+              const aEl = clone.querySelector('.allergen');
+              let aText = '';
+              let aList = [];
+              if (aEl) {
+                aText = aEl.textContent.trim();
+                if (aText) aList = [aText];
+                aEl.remove();
+              }
+              return { name: clone.textContent.trim(), allergen: aText, allergens: aList, newAllergen: '', customAllergen: '' };
+            });
+          }
+        } catch (err) {
+          alert("Tiedoston lukeminen epäonnistui. Varmista että se on editorin generoima tiedosto.\nVirhe: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    };
+
+    const googleFontsUrl = computed(() => {
+      const hFont = state.styles.fontHeading.replace(/ /g, '+');
+      const bFont = state.styles.fontBody.replace(/ /g, '+');
+      const families = Array.from(new Set([hFont, bFont]));
+      const familyParams = families.map(f => `family=${f}:ital,wght@0,400;0,700;1,400;1,700`).join('&');
+      return `https://fonts.googleapis.com/css2?${familyParams}&display=swap`;
+    });
+
+    // Korjattu: Estää kaatumisen jos 'generate_preview.js' puuttuu
+    const generatedHtml = computed(() => {
+      try {
+        if (typeof window.generatePreviewHtml === 'function') {
+          return window.generatePreviewHtml(state, escape, googleFontsUrl.value);
+        }
+        return `
+          <html style="background:#111827; color:white; font-family:sans-serif; text-align:center; padding-top:20vh;">
+            <body>
+              <h2 style="color:#ef4444; font-size:24px; margin-bottom:20px;">Tiedostoa ei löytynyt!</h2>
+              <p>Editori ei pysty generoimaan esikatselua, koska <b>generate_preview.js</b> -tiedostoa ei ladattu oikein.</p>
+              <p>Varmista, että kyseinen tiedosto löytyy samasta kansiosta täsmälleen tällä nimellä.</p>
+            </body>
+          </html>`;
+      } catch (err) {
+        return `<html><body><h2 style="color:red;">Virhe esikatselussa:</h2><pre>${err.message}</pre></body></html>`;
+      }
+    });
+
+    // Korjattu: Estää kaatumisen jos 'generate_emenu.js' puuttuu
+    const generatedEMenuHtml = computed(() => {
+      try {
+        if (typeof window.generateEMenuHtml === 'function') {
+          return window.generateEMenuHtml(state, escape, googleFontsUrl.value);
+        }
+        return '';
+      } catch (err) {
+        console.error(err);
+        return '';
+      }
+    });
+
+    const exportHtml = () => {
+      const blobMenu = new Blob([generatedHtml.value], { type: 'text/html' });
+      const linkMenu = document.createElement('a');
+      linkMenu.href = URL.createObjectURL(blobMenu);
+      linkMenu.download = 'menu.html';
+      linkMenu.click();
+      URL.revokeObjectURL(linkMenu.href);
+
+      setTimeout(() => {
+        const blobEMenu = new Blob([generatedEMenuHtml.value], { type: 'text/html' });
+        const linkEMenu = document.createElement('a');
+        linkEMenu.href = URL.createObjectURL(blobEMenu);
+        linkEMenu.download = 'e-menu.html';
+        linkEMenu.click();
+        URL.revokeObjectURL(linkEMenu.href);
+      }, 500);
+    };
+
+    return {
+      state, activeTab, tabClass, addCard, moveCard, clearMenu, generatedHtml, exportHtml, importHtml, fileInput,
+      allergenOptions, addAllergen, removeAllergen, handleImageUpload, handleBgUpload, viewportRef,
+      onDragStart, onDragEnd, onDrop, isDragging,
+      panX, panY, zoom, startDrag, doDrag, stopDrag, handleWheel, startDragTouch, doDragTouch, resetView
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
