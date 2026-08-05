@@ -146,16 +146,40 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
     position: relative;
     cursor: pointer;
 
-    /* SUORITUSKYKY-OPTIMOINTI (Sumennus poistettu) */
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
+    backdrop-filter: blur(var(--blur-card));
+    -webkit-backdrop-filter: blur(var(--blur-card));
   }
   .card.selected {
     background: #ffffff;
     border-color: var(--color-price-bg);
     box-shadow: 0 0 12px rgba(211, 108, 34, 0.6);
+  }
+
+  /* Vihreä valintamerkki */
+  .card.selected .check-mark {
+    display: flex;
+  }
+  .check-mark {
+    display: none;
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 36px;
+    height: 36px;
+    background: #22c55e;
+    color: white;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    z-index: 10;
+    pointer-events: none;
+    border: 3px solid white;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes popIn {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
   }
 
   .card-header { display: flex; justify-content: space-between; align-items: stretch; gap: 12px; }
@@ -211,23 +235,31 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
     text-shadow: var(--shadow-text-dark);
   }
 
-  .review-item {
-    display: flex; gap: 15px; align-items: center;
+  /* Yhteenvetokortti (Tarkista valintasi) */
+  .review-card {
     background: var(--color-bg-card);
-    padding: 12px; border-radius: 8px;
-    margin-bottom: 10px;
     border: 1px solid var(--color-border-card);
-    text-align: left;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    margin-bottom: 20px;
+    overflow: hidden;
+    backdrop-filter: blur(var(--blur-card));
+    -webkit-backdrop-filter: blur(var(--blur-card));
+  }
+  .review-item-row {
+    display: flex; gap: 15px; align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--color-border-card);
+  }
+  .review-item-row:last-child {
+    border-bottom: none;
+  }
+  .review-item-row img {
+    width: 50px; height: 50px; object-fit: cover; border-radius: 6px; flex-shrink: 0;
+  }
+  .review-item-title { font-weight: 700; font-size: 1.05rem; color: var(--color-text-main); }
+  .review-item-sub { font-size: 0.85rem; color: var(--color-text-secondary); }
 
-    /* GPU-kiihdytys */
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-  }
-  .review-item img {
-    width: 60px; height: 60px; object-fit: cover; border-radius: 6px; flex-shrink: 0;
-  }
   .action-btn {
     padding: 15px; border-radius: 8px; font-weight: bold; font-size: 1rem;
     cursor: pointer; transition: all 0.2s; width: 100%; display: block;
@@ -241,18 +273,14 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
   .bottom-bar {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    background: var(--color-bg-header);
-    border-top: 1px solid var(--color-border-card);
+    background: #36672e;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
     padding: 15px;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
     display: flex;
     justify-content: space-between;
     align-items: center;
     z-index: 100;
-
-    /* GPU-kiihdytys alapalkille */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
   }
 
   .nav-btn {
@@ -277,8 +305,8 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
   .nav-btn.secondary { background: rgba(255,255,255,0.2); color: var(--color-text-heading); box-shadow: none; border: 1px solid rgba(255,255,255,0.3); }
 
   .total-info { text-align: center; color: var(--color-text-heading); text-shadow: var(--shadow-text-dark); }
-  .total-price { font-size: 1.4rem; font-weight: 700; color: var(--color-price-bg); }
-  .progress-info { font-size: 0.85rem; opacity: 0.8; font-weight: normal; }
+  .total-price { font-size: 1.4rem; font-weight: 700; color: #ffffff; }
+  .progress-info { font-size: 0.85rem; opacity: 0.9; font-weight: normal; }
 
   .summary-view { text-align: center; }
 
@@ -290,11 +318,8 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
     margin-top: 15px; font-size: 0.9rem; line-height: 1.5; box-shadow: var(--shadow-card);
     border: 1px solid var(--color-border-card);
 
-    /* GPU-kiihdytys */
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
+    backdrop-filter: blur(var(--blur-card));
+    -webkit-backdrop-filter: blur(var(--blur-card));
   }
 
   #image-modal {
@@ -336,9 +361,9 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
   let selections = ${JSON.stringify(selectionsObj)};
   let cart = [];
 
-  // Modernit, paksut SVG-nuoli-ikonit
   const svgLeftArrow = \`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>\`;
   const svgRightArrow = \`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>\`;
+  const checkSvg = \`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>\`;
 
   function initApp() {
     renderCurrentStep();
@@ -370,7 +395,12 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
       selArray.splice(index, 1);
     } else {
       if (selArray.length >= limit) {
-        selArray.shift();
+        if (limit === 1) {
+          selArray.shift(); // Radio-button logiikka: vaihtaa ainoan valinnan automaattisesti
+        } else {
+          alert(\`Voit valita tähän annokseen enintään \${limit} tuotetta. Poista ensin jokin valinta klikkaamalla sitä uudelleen.\`);
+          return; // Vaatii manuaalista poistoa jos multi-selection on maksimissa
+        }
       }
       let newItem = Object.assign({}, itemData);
       if (newItem.subs && newItem.subs.length > 0) {
@@ -500,6 +530,7 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
 
       html += \`
       <div class="card \${isSelected ? 'selected' : ''}" onclick="toggleItem('\${stepId}', '\${item.id}')">
+      <div class="check-mark">\${checkSvg}</div>
       <div class="card-header">
       <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
       <div class="card-title">\${escapeHtml(item.name)}</div>
@@ -521,7 +552,7 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
   function renderReview(app) {
     let html = \`<div class="step-container active">
     <div class="step-title">Tarkista valintasi</div>
-    <div style="margin-bottom: 20px;">\`;
+    <div class="review-card">\`;
 
     stepsOrder.forEach(stepId => {
       if (stepId === 'sizes' || stepId === 'summary' || stepId === 'review') return;
@@ -531,10 +562,17 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
           let sub = item.selectedSub ? \` (\${item.selectedSub})\` : '';
           let catName = menuData[stepId].title.split('(')[0];
 
-          html += \`<div class="review-item">
+          let priceBadge = '';
+          if (item.price > 0) {
+            priceBadge = \`<span class="price-badge" style="margin-top: 0; margin-left: 8px; padding: 2px 8px; font-size: 0.85rem; vertical-align: middle;">+\${item.price}€</span>\`;
+          } else if (item.price < 0) {
+            priceBadge = \`<span class="price-badge minus" style="margin-top: 0; margin-left: 8px; padding: 2px 8px; font-size: 0.85rem; vertical-align: middle;">\${item.price}€</span>\`;
+          }
+
+          html += \`<div class="review-item-row">
           \${img}
           <div class="review-item-content">
-          <div class="review-item-title">\${escapeHtml(item.name)}\${escapeHtml(sub)}</div>
+          <div class="review-item-title">\${escapeHtml(item.name)}\${escapeHtml(sub)}\${priceBadge}</div>
           <div class="review-item-sub">\${escapeHtml(catName)}</div>
           </div>
           </div>\`;
@@ -642,15 +680,18 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
 
     if (stepId === 'summary') {
       progress.innerText = 'Valmis';
-      btnPrev.style.visibility = 'hidden';
 
-      btnNext.innerHTML = 'Takaisin';
-      btnNext.disabled = false;
+      // Näytetään Takaisin-painike vasemmalla puolella (btnPrev)
+      btnPrev.style.visibility = 'visible';
+      btnPrev.innerHTML = 'Takaisin';
+      btnPrev.disabled = false;
+
+      // Piilotetaan seuraava-painike
+      btnNext.style.visibility = 'hidden';
     } else if (stepId === 'review') {
-      progress.innerText = \`Tarkistus\`;
+      progress.innerText = \`Loppuhinta\`;
 
       btnPrev.innerHTML = svgLeftArrow;
-
       btnNext.style.visibility = 'hidden';
     } else {
       progress.innerText = \`Vaihe \${currentStep + 1} / \${stepsCount}\`;
@@ -674,15 +715,10 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
 
   function goNext() {
     const stepId = stepsOrder[currentStep];
-    if (stepId === 'summary') {
-      if (cart.length > 0) {
-        selections = cart.pop();
-      }
-      currentStep = stepsOrder.indexOf('review');
-    } else if (stepId === 'review') {
+    if (stepId === 'review') {
       finishOrder();
       return;
-    } else {
+    } else if (stepId !== 'summary') {
       currentStep++;
     }
     initApp();
@@ -690,6 +726,19 @@ window.generateEMenuHtml = function(state, escape, googleFontsUrl) {
   }
 
   function goPrev() {
+    const stepId = stepsOrder[currentStep];
+
+    // Summary-näkymässä "Takaisin" palauttaa ostoskorista muokattavaksi
+    if (stepId === 'summary') {
+      if (cart.length > 0) {
+        selections = cart.pop();
+      }
+      currentStep = stepsOrder.indexOf('review');
+      initApp();
+      animateStep();
+      return;
+    }
+
     if (currentStep > 0) {
       currentStep--;
       initApp();
