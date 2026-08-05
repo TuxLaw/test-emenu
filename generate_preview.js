@@ -22,7 +22,7 @@ window.getMenuCss = (styles) => `
   --color-price-label: #D5E0D7;
 
   --color-bg-header: rgba(0, 0, 0, 0.3);
-  --color-bg-card: rgba(255, 255, 255, 0.7);
+  --color-bg-card: rgba(255, 255, 255, ${styles.cardBgAlpha !== undefined ? styles.cardBgAlpha : 0.7});
   --color-bg-pill: rgba(54, 103, 46, 0.3);
 
   --color-border-card: rgba(195, 205, 197, 0.65);
@@ -42,7 +42,7 @@ window.getMenuCss = (styles) => `
   --padding-pill: 0.1rem 0.5rem;
 
   --blur-header-footer: 10px;
-  --blur-card: 15px;
+  --blur-card: ${styles.cardBlur === false ? 0 : 15}px;
   --blur-pill: 5px;
 
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.35);
