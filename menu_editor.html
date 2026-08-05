@@ -26,7 +26,7 @@
   <input type="file" ref="fileInput" accept=".html" @change="importHtml" class="hidden">
 
   <!-- VASEN PANEELI: EDITOR -->
-  <div class="w-full md:w-[500px] flex flex-col h-[60vh] md:h-full border-t md:border-t-0 md:border-r border-gray-700 bg-gray-800 shrink-0 shadow-2xl z-10 select-auto overflow-hidden">
+  <div class="w-full md:w-[500px] flex flex-col h-[75vh] md:h-full border-t md:border-t-0 md:border-r border-gray-700 bg-gray-800 shrink-0 shadow-2xl z-10 select-auto overflow-hidden">
 
     <div class="p-4 border-b border-gray-700 flex flex-col gap-3 bg-gray-900 shadow-md z-20">
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -94,14 +94,14 @@
               <span>Sisällön Koko (Ruokalista)</span>
               <span class="text-blue-400">{{ state.styles.fontSizeContent }}px</span>
             </label>
-            <input type="range" v-model="state.styles.fontSizeContent" min="16" max="40" step="1" class="w-full cursor-pointer">
+            <input type="range" v-model.number="state.styles.fontSizeContent" min="16" max="40" step="1" class="w-full cursor-pointer">
           </div>
           <div>
             <label class="block text-gray-400 text-xs font-bold mb-2 uppercase flex justify-between">
               <span>Palkkien Koko (Ylä/alaotsikot)</span>
               <span class="text-blue-400">{{ state.styles.fontSizeBars }}px</span>
             </label>
-            <input type="range" v-model="state.styles.fontSizeBars" min="16" max="40" step="1" class="w-full cursor-pointer">
+            <input type="range" v-model.number="state.styles.fontSizeBars" min="16" max="40" step="1" class="w-full cursor-pointer">
           </div>
 
           <!-- TAUSTAN ASETUKSET -->
@@ -124,6 +124,23 @@
               </button>
             </div>
             <p class="text-[10px] text-gray-400 mt-2 leading-tight">Lataa taustakuva suoraan editoriin, jotta se tallentuu projektiin koodattuna. Näin tuotettu HTML-tiedosto ei tarvitse erillisiä kuvatiedostoja toimiakseen.</p>
+          </div>
+
+          <!-- KORTTIEN ASETUKSET -->
+          <div class="pt-2 border-t border-gray-700">
+            <div class="flex items-center justify-between mb-3 mt-1">
+              <label class="block text-gray-400 text-xs font-bold uppercase">Korttien sumennus (Blur)</label>
+              <button @click="state.styles.cardBlur = !state.styles.cardBlur"
+                      :class="state.styles.cardBlur ? 'bg-blue-600' : 'bg-gray-600'"
+                      class="relative inline-flex h-5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none">
+                <span :class="state.styles.cardBlur ? 'translate-x-5' : 'translate-x-0'" class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+              </button>
+            </div>
+            <label class="block text-gray-400 text-xs font-bold mb-2 uppercase flex justify-between">
+              <span>Taustan läpinäkyvyys</span>
+              <span class="text-blue-400">{{ Math.round(state.styles.cardBgAlpha * 100) }}%</span>
+            </label>
+            <input type="range" v-model.number="state.styles.cardBgAlpha" min="0" max="1" step="0.05" class="w-full cursor-pointer">
           </div>
 
         </div>
@@ -300,7 +317,7 @@
   </div>
 
   <!-- OIKEA PANEELI: LIVE PREVIEW & PANNING CANVAS -->
-  <div class="w-full h-[40vh] md:h-full md:flex-1 bg-gray-950 relative overflow-hidden outline-none border-b md:border-b-0 md:border-l border-gray-700"
+  <div class="w-full h-[25vh] md:h-full md:flex-1 bg-gray-950 relative overflow-hidden outline-none border-b md:border-b-0 md:border-l border-gray-700"
        ref="viewportRef"
        :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
        @mousedown.prevent="startDrag"
@@ -309,7 +326,7 @@
        @mouseleave="stopDrag"
        @wheel.prevent="handleWheel"
        @touchstart.prevent="startDragTouch"
-       @touchmove="doDragTouch"
+       @touchmove.prevent="doDragTouch"
        @touchend="stopDrag">
 
     <!-- Työkalut alakulmassa (Keskitä) -->
@@ -471,6 +488,14 @@ createApp({
     let startMouseX = 0, startMouseY = 0;
     let initialPanX = 0, initialPanY = 0;
 
+    let lastPinchDist = null;
+    let lastPinchCenterX = 0;
+    let lastPinchCenterY = 0;
+
+    const getDistance = (touches) => {
+      return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    };
+
     const startDrag = (e) => {
       if (e.button !== 0) return;
       isDragging.value = true;
@@ -493,16 +518,51 @@ createApp({
         startMouseY = e.touches[0].clientY;
         initialPanX = panX.value;
         initialPanY = panY.value;
+      } else if (e.touches.length === 2) {
+        isDragging.value = false; // Peruutetaan yhden sormen siirto jos pinch
+        lastPinchDist = getDistance(e.touches);
+        if (viewportRef.value) {
+          const rect = viewportRef.value.getBoundingClientRect();
+          lastPinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+          lastPinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+        }
       }
     };
 
     const doDragTouch = (e) => {
-      if (!isDragging.value || e.touches.length !== 1) return;
-      panX.value = initialPanX + (e.touches[0].clientX - startMouseX);
-      panY.value = initialPanY + (e.touches[0].clientY - startMouseY);
+      if (e.touches.length === 1 && isDragging.value) {
+        panX.value = initialPanX + (e.touches[0].clientX - startMouseX);
+        panY.value = initialPanY + (e.touches[0].clientY - startMouseY);
+      } else if (e.touches.length === 2 && lastPinchDist && viewportRef.value) {
+        const dist = getDistance(e.touches);
+        const factor = dist / lastPinchDist;
+        const oldZoom = zoom.value;
+        const newZoom = Math.max(0.1, Math.min(oldZoom * factor, 3));
+
+        const canvasX = (lastPinchCenterX - panX.value) / oldZoom;
+        const canvasY = (lastPinchCenterY - panY.value) / oldZoom;
+
+        zoom.value = newZoom;
+        panX.value = lastPinchCenterX - canvasX * newZoom;
+        panY.value = lastPinchCenterY - canvasY * newZoom;
+        lastPinchDist = dist;
+
+        // Kosketuksen keskiön liikkumisen huomiointi nipistyksen aikana (pan)
+        const rect = viewportRef.value.getBoundingClientRect();
+        const newCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+        const newCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+
+        panX.value += (newCenterX - lastPinchCenterX);
+        panY.value += (newCenterY - lastPinchCenterY);
+        lastPinchCenterX = newCenterX;
+        lastPinchCenterY = newCenterY;
+      }
     };
 
-    const stopDrag = () => isDragging.value = false;
+    const stopDrag = () => {
+      isDragging.value = false;
+      lastPinchDist = null;
+    };
 
     const handleWheel = (e) => {
       if (!viewportRef.value) return;
@@ -547,7 +607,9 @@ createApp({
         fontSizeContent: 24,
         fontSizeBars: 24,
         bgImage: '',
-        bgColor: '#4c7253'
+        bgColor: '#4c7253',
+        cardBlur: false, // Uusi oletus: Ei sumennusta
+        cardBgAlpha: 0.9 // Uusi oletus: 90% läpinäkyvyys
       },
       header: {
         title: "Kokoa oma annos 4-7:stä eri herkusta",
@@ -685,13 +747,23 @@ createApp({
             const barsMatch = cssText.match(/--base-font-size-bars:\s*(\d+)px/);
             if (barsMatch) state.styles.fontSizeBars = parseInt(barsMatch[1], 10);
 
-            // UUDET: Lue taustaväri ja Base64-kuva tuodusta koodista
+            // Taustaväri ja Base64-kuva
             const bgColorMatch = cssText.match(/--bg-color-fallback:\s*([^;]+);/);
             if (bgColorMatch) state.styles.bgColor = bgColorMatch[1].trim();
 
             const bgImageMatch = cssText.match(/--bg-image:\s*url\('([^']+)'\)/);
             if (bgImageMatch && bgImageMatch[1].startsWith('data:')) {
                 state.styles.bgImage = bgImageMatch[1];
+            }
+
+            // Korttien sumennus ja läpinäkyvyys
+            const blurMatch = cssText.match(/--blur-card:\s*(\d+)px/);
+            if (blurMatch) {
+              state.styles.cardBlur = parseInt(blurMatch[1], 10) > 0;
+            }
+            const bgAlphaMatch = cssText.match(/--color-bg-card:\s*rgba\(\d+,\s*\d+,\s*\d+,\s*([\d.]+)\)/);
+            if (bgAlphaMatch) {
+              state.styles.cardBgAlpha = parseFloat(bgAlphaMatch[1]);
             }
           }
 
@@ -791,8 +863,10 @@ createApp({
       return `https://fonts.googleapis.com/css2?${familyParams}&display=swap`;
     });
 
-    // Korjattu: Estää kaatumisen jos 'generate_preview.js' puuttuu
     const generatedHtml = computed(() => {
+      // Varmistaa että Vue jäljittää ja päivittää kun stylet muuttuvat
+      JSON.stringify(state.styles);
+
       try {
         if (typeof window.generatePreviewHtml === 'function') {
           return window.generatePreviewHtml(state, escape, googleFontsUrl.value);
@@ -810,8 +884,10 @@ createApp({
       }
     });
 
-    // Korjattu: Estää kaatumisen jos 'generate_emenu.js' puuttuu
     const generatedEMenuHtml = computed(() => {
+      // Varmistaa että Vue jäljittää ja päivittää myös e-menun taustalla
+      JSON.stringify(state.styles);
+
       try {
         if (typeof window.generateEMenuHtml === 'function') {
           return window.generateEMenuHtml(state, escape, googleFontsUrl.value);
