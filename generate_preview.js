@@ -23,7 +23,9 @@ window.getMenuCss = (styles) => `
 
   --color-bg-header: rgba(0, 0, 0, 0.3);
   --color-bg-card: rgba(255, 255, 255, ${styles.cardBgAlpha !== undefined ? styles.cardBgAlpha : 0.7});
-  --color-bg-pill: rgba(54, 103, 46, 0.3);
+  
+  /* Kiinteä ja täysin peittävä väri pikkupillereille (ei enää läpinäkyvyyttä) */
+  --color-bg-pill: #E2E8E3;
 
   --color-border-card: rgba(195, 205, 197, 0.65);
   --color-border-col-line: #ffffff;
@@ -41,9 +43,9 @@ window.getMenuCss = (styles) => `
   --padding-card: 0.2rem 0.4rem;
   --padding-pill: 0.1rem 0.5rem;
 
+  /* Sumennus-napin kytkentä (koskee nyt suoraan myös palkkeja ja kortteja) */
   --blur-header-footer: ${styles.cardBlur === false ? 0 : 10}px;
   --blur-card: ${styles.cardBlur === false ? 0 : 15}px;
-  --blur-pill: ${styles.cardBlur === false ? 0 : 5}px;
 
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-pill: 0 1px 1px rgba(0, 0, 0, 0.5);
@@ -154,7 +156,8 @@ body {
 .sub-item, .topping-item {
   background: var(--color-bg-pill); border: 1px solid var(--color-border-card);
   box-shadow: var(--shadow-pill); display: flex; align-items: baseline; gap: 0.2rem;
-  color: var(--color-text-main); backdrop-filter: blur(var(--blur-pill)); -webkit-backdrop-filter: blur(var(--blur-pill));
+  color: var(--color-text-main);
+  /* Sumennus (backdrop-filter) otettiin pillereiltä pois pyynnöstä */
 }
 .sub-item { padding: var(--padding-pill); border-radius: var(--radius-pill); font-size: var(--size-food-desc); }
 .mt-2 { margin-top: 0.25rem; }
