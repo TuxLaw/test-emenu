@@ -24,8 +24,8 @@ window.getMenuCss = (styles) => `
   --color-bg-header: rgba(0, 0, 0, 0.3);
   --color-bg-card: rgba(255, 255, 255, ${styles.cardBgAlpha !== undefined ? styles.cardBgAlpha : 0.7});
   
-  /* Kiinteä peittävä väri pikkupillereille (ei enää läpinäkyvyyttä) */
-  --color-bg-pill: #E8ECE9;
+  /* Kiinteä peittävä väri pikkupillereille */
+  --color-bg-pill: #c4d7bd;
 
   --color-border-card: rgba(195, 205, 197, 0.65);
   --color-border-col-line: #ffffff;
