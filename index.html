@@ -921,6 +921,8 @@ createApp({
       const iframe = document.querySelector('iframe');
       if (!iframe || !iframe.contentDocument) return;
 
+      const doc = iframe.contentDocument;
+
       try {
         if (iframe.contentWindow.document.fonts) {
           await iframe.contentWindow.document.fonts.ready;
@@ -929,15 +931,67 @@ createApp({
           await document.fonts.ready;
         }
 
-        // Pieni viive varmistamaan että kaikki DOM asiat asettuvat paikoilleen
+        const originalStyles = new Map();
+
+        // GLASSMORPHISM HACK FOR HTML-TO-IMAGE
+        if (state.styles.cardBlur) {
+          const canvas = document.createElement('canvas');
+          canvas.width = 1920;
+          canvas.height = 1080;
+          const ctx = canvas.getContext('2d');
+
+          ctx.fillStyle = state.styles.bgColor || '#111827';
+          ctx.fillRect(0, 0, 1920, 1080);
+
+          if (state.styles.bgImage) {
+            const img = new Image();
+            img.src = state.styles.bgImage;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+
+            let scale = Math.max(1920 / img.width, 1080 / img.height);
+            let x = (1920 / 2) - (img.width * scale / 2);
+            let y = (1080 / 2) - (img.height * scale / 2);
+
+            // Piirretään ensin terävänä, jotta sumennuksen reunoihin ei tule läpinäkyvää hehkua
+            ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+            
+            ctx.filter = 'blur(15px)';
+            ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+            ctx.filter = 'none';
+          }
+
+          const blurredBgUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          const elements = doc.querySelectorAll('.menu-card, .header, .footer');
+          elements.forEach(el => {
+            originalStyles.set(el, el.style.cssText);
+
+            let tint = `rgba(255, 255, 255, ${state.styles.cardBgAlpha !== undefined ? state.styles.cardBgAlpha : 0.7})`;
+            if (el.classList.contains('header')) tint = 'rgba(0, 0, 0, 0.3)';
+            else if (el.classList.contains('footer')) tint = `rgba(255, 255, 255, ${state.styles.cardBgAlpha !== undefined ? state.styles.cardBgAlpha : 0.7})`;
+
+            el.style.setProperty('background-image', `linear-gradient(${tint}, ${tint}), url('${blurredBgUrl}')`, 'important');
+            el.style.setProperty('background-attachment', 'fixed', 'important');
+            el.style.setProperty('background-size', '1920px 1080px', 'important');
+            el.style.setProperty('background-position', 'top left', 'important');
+            el.style.setProperty('background-repeat', 'no-repeat', 'important');
+            el.style.setProperty('backdrop-filter', 'none', 'important');
+            el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+          });
+        }
+
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        const targetNode = iframe.contentDocument.body;
+        const targetNode = doc.body;
 
         const dataUrl = await window.htmlToImage.toJpeg(targetNode, {
           quality: 0.95,
           width: 1920,
           height: 1080,
+          pixelRatio: 1, 
           backgroundColor: state.styles.bgColor || '#111827',
           style: {
              margin: '0',
@@ -945,13 +999,20 @@ createApp({
           }
         });
 
+        // Palautetaan alkuperäiset tyylit
+        if (state.styles.cardBlur) {
+          originalStyles.forEach((cssText, el) => {
+            el.style.cssText = cssText;
+          });
+        }
+
         const link = document.createElement('a');
         link.download = 'menu.jpg';
         link.href = dataUrl;
         link.click();
       } catch (error) {
         console.error("JPG export error:", error);
-        alert("JPG-kuvan luonti epäonnistui. Varmista ettei selaimesi turva-asetukset estä kuvien latausta.");
+        alert("JPG-kuvan luonti epäonnistui.");
       }
     };
 
@@ -963,7 +1024,6 @@ createApp({
       return `https://fonts.googleapis.com/css2?${familyParams}&display=swap`;
     });
 
-    // Pakottaa selaimen lataamaan fontit myös parenttiin kuvan vientiä varten
     watch(googleFontsUrl, (newUrl) => {
       let link = document.getElementById('dynamic-google-fonts');
       if (!link) {
@@ -988,7 +1048,7 @@ createApp({
     });
 
     const generatedEMenuHtml = computed(() => {
-      JSON.stringify(state.styles);
+      JSON.stringify(state.styles); 
       try {
         if (typeof window.generateEMenuHtml === 'function') {
           return window.generateEMenuHtml(state, escape, googleFontsUrl.value);
