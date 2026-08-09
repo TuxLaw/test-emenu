@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
+
   <!-- HTML2Canvas kuvien luontiin -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -128,7 +128,7 @@
               </button>
             </div>
           </div>
-          
+
           <!-- KORTTIEN ASETUKSET -->
           <div class="pt-2 border-t border-gray-700">
             <div class="flex items-center justify-between mb-3 mt-1">
@@ -182,12 +182,11 @@
         </div>
 
         <div class="space-y-1">
-          <!-- Kortit loopataan. KÄÄRITTY YHTEEN DIVIIN DROP-ZONE:N KANSSA -->
           <div v-for="(card, cardIndex) in col.cards" :key="card.id"
                @dragenter.prevent="setDropTarget(colIndex, cardIndex)"
                @dragover.prevent
                @drop.prevent="onDrop($event, colIndex, cardIndex)">
-            
+
             <!-- Drag & Drop placeholder kortin YLÄPUOLELLA -->
             <div class="drop-zone overflow-hidden transition-all duration-200 ease-in-out pointer-events-none"
                  :class="(draggedOverInfo.colIndex === colIndex && draggedOverInfo.cardIndex === cardIndex) ? 'h-16 opacity-100 mb-2' : 'h-0 opacity-0 mb-0'">
@@ -203,24 +202,24 @@
                    draggable="true"
                    @dragstart="onDragStart($event, colIndex, cardIndex)"
                    @dragend="onDragEnd">
-                   
+
                 <div class="flex items-center gap-2 flex-1 truncate mr-2">
                   <button @click.stop="card.expanded = !card.expanded" class="bg-gray-600 hover:bg-gray-500 px-2 py-1.5 rounded transition shrink-0" :title="card.expanded ? 'Pienennä' : 'Laajenna'">
                     <i class="fa-solid text-xs w-3 text-center" :class="card.expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                   </button>
-                  
+
                   <span class="font-bold text-gray-300 cursor-move flex items-center gap-2 select-none truncate flex-1" title="Raahaa järjestääksesi">
                     <i class="fa-solid fa-grip-vertical text-gray-500 hover:text-white transition px-1 py-1"></i>
                     <span class="truncate">{{ card.name || 'Nimetön' }}</span>
                   </span>
                 </div>
-                
+
                 <div class="flex items-center shrink-0">
                   <button @click.stop="moveCard(colIndex, cardIndex, -1)" class="bg-gray-600 hover:bg-gray-500 px-2 py-1.5 rounded-l transition" title="Siirrä ylös"><i class="fa-solid fa-arrow-up text-xs"></i></button>
                   <button @click.stop="moveCard(colIndex, cardIndex, 1)" class="bg-gray-600 hover:bg-gray-500 px-2 py-1.5 rounded-r transition border-l border-gray-700" title="Siirrä alas"><i class="fa-solid fa-arrow-down text-xs"></i></button>
-                  
+
                   <div class="w-6"></div>
-                  
+
                   <button @click.stop="col.cards.splice(cardIndex, 1)" class="bg-red-600/80 hover:bg-red-500 px-2 py-1.5 rounded transition" title="Poista"><i class="fa-solid fa-trash text-xs"></i></button>
                 </div>
               </div>
@@ -452,7 +451,7 @@ createApp({
     const setDropTarget = (colIndex, cardIndex) => {
       const startCol = draggedCardInfo.value.colIndex;
       const startIndex = draggedCardInfo.value.cardIndex;
-      if (startCol === null) return; 
+      if (startCol === null) return;
 
       // Ei näytetä drop zonea jos se ei johda mihinkään visuaaliseen muutokseen
       if (startCol === colIndex && (cardIndex === startIndex || cardIndex === startIndex + 1)) {
@@ -472,7 +471,7 @@ createApp({
     const onDrop = (e, colIndex, cardIndex) => {
       const startCol = draggedCardInfo.value.colIndex;
       const startIndex = draggedCardInfo.value.cardIndex;
-      
+
       draggedOverInfo.value = { colIndex: null, cardIndex: null };
 
       if (startCol !== null && startIndex !== null) {
@@ -483,7 +482,7 @@ createApp({
         if (startCol === colIndex) {
           if (startIndex === cardIndex) return;
           sourceArr.splice(startIndex, 1);
-          
+
           let targetIndex = cardIndex;
           // Koska poistettiin ylempää, kaikki sen jälkeiset indeksit tippuivat yhdellä
           if (startIndex < cardIndex) {
@@ -687,8 +686,8 @@ createApp({
         fontSizeBars: 24,
         bgImage: '',
         bgColor: '#4c7253',
-        cardBlur: false, 
-        cardBgAlpha: 0.9 
+        cardBlur: false,
+        cardBgAlpha: 0.9
       },
       header: {
         title: "Kokoa oma annos 4-7:stä eri herkusta",
@@ -845,7 +844,7 @@ createApp({
             if (bgImageMatch && bgImageMatch[1].startsWith('data:')) {
                 state.styles.bgImage = bgImageMatch[1];
             }
-            
+
             const blurMatch = cssText.match(/--blur-card:\s*(\d+)px/);
             if (blurMatch) {
               state.styles.cardBlur = parseInt(blurMatch[1], 10) > 0;
@@ -911,9 +910,9 @@ createApp({
                 const imgAttr = domCard.getAttribute('data-image');
                 const image = imgAttr || '';
 
-                return { 
-                  id: generateId(), 
-                  name, desc, allergen, allergens, newAllergen: '', customAllergen: '', price, pills, image, expanded: false 
+                return {
+                  id: generateId(),
+                  name, desc, allergen, allergens, newAllergen: '', customAllergen: '', price, pills, image, expanded: false
                 };
               });
 
@@ -947,9 +946,12 @@ createApp({
       e.target.value = '';
     };
 
-    const exportPng = async () => {
+    // JPEG VIENTI HAKKEROIDULLA SUMENNUKSELLA KANKAAN (CANVAS) KAUTTA
+    const exportJpg = async () => {
       const iframe = document.querySelector('iframe');
       if (!iframe || !iframe.contentDocument) return;
+
+      const doc = iframe.contentDocument;
 
       try {
         if (iframe.contentWindow.document.fonts) {
@@ -959,20 +961,82 @@ createApp({
           await document.fonts.ready;
         }
 
-        await new Promise(resolve => setTimeout(resolve, 300));
+        const originalStyles = new Map();
 
-        const canvas = await window.html2canvas(iframe.contentDocument.body, {
+        // GLASSMORPHISM HACK FOR HTML2CANVAS
+        if (state.styles.cardBlur) {
+          const canvas = document.createElement('canvas');
+          canvas.width = 1920;
+          canvas.height = 1080;
+          const ctx = canvas.getContext('2d');
+
+          // Taustaväri alle
+          ctx.fillStyle = state.styles.bgColor || '#111827';
+          ctx.fillRect(0, 0, 1920, 1080);
+
+          // Sumennettu kuva
+          if (state.styles.bgImage) {
+            const img = new Image();
+            img.src = state.styles.bgImage;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+
+            // Simuloidaan CSS background-size: cover; background-position: center;
+            let scale = Math.max(1920 / img.width, 1080 / img.height);
+            let x = (1920 / 2) - (img.width / 2) * scale;
+            let y = (1080 / 2) - (img.height / 2) * scale;
+
+            ctx.filter = 'blur(15px)';
+            ctx.drawImage(img, x - 30, y - 30, img.width * scale + 60, img.height * scale + 60);
+            ctx.filter = 'none';
+          }
+
+          const blurredBgUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+          // Etsitään kaikki elementit joilla on sumennus
+          const elements = doc.querySelectorAll('.menu-card, .header, .footer, .sub-item, .topping-item');
+          elements.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            originalStyles.set(el, el.style.cssText);
+
+            // Valitaan elementille oikea sävyte väri
+            let tint = `rgba(255, 255, 255, ${state.styles.cardBgAlpha !== undefined ? state.styles.cardBgAlpha : 0.7})`;
+            if (el.classList.contains('header')) tint = 'rgba(0, 0, 0, 0.3)';
+            if (el.classList.contains('sub-item') || el.classList.contains('topping-item')) tint = 'rgba(54, 103, 46, 0.3)';
+
+            // Määritetään monitasoinen tausta joka yliajaa natiivin sumennuksen
+            el.style.setProperty('background', `linear-gradient(${tint}, ${tint}), url('${blurredBgUrl}')`, 'important');
+            el.style.setProperty('background-size', '1920px 1080px', 'important');
+            el.style.setProperty('background-position', `-${rect.left}px -${rect.top}px`, 'important');
+            el.style.setProperty('background-repeat', 'no-repeat', 'important');
+            el.style.setProperty('backdrop-filter', 'none', 'important');
+            el.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+          });
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 300)); // Odotetaan että DOM päivitykset asettuu
+
+        const resultCanvas = await window.html2canvas(doc.body, {
           useCORS: true,
           allowTaint: true,
           backgroundColor: state.styles.bgColor || '#111827',
-          scale: 2, 
+          scale: 2,
           windowWidth: 1920,
           windowHeight: 1080
         });
 
+        // Palautetaan alkuperäiset tyylit iframeen kuvauksen jälkeen
+        if (state.styles.cardBlur) {
+          originalStyles.forEach((cssText, el) => {
+            el.style.cssText = cssText;
+          });
+        }
+
         const link = document.createElement('a');
         link.download = 'menu.jpg';
-        link.href = canvas.toDataURL('image/jpeg', 1.0);
+        link.href = resultCanvas.toDataURL('image/jpeg', 0.95);
         link.click();
       } catch (error) {
         console.error("JPG export error:", error);
@@ -1044,7 +1108,7 @@ createApp({
     };
 
     return {
-      state, activeTab, tabClass, addCard, moveCard, clearMenu, generatedHtml, exportHtml, exportJpg: exportPng, importHtml, fileInput,
+      state, activeTab, tabClass, addCard, moveCard, clearMenu, generatedHtml, exportHtml, exportJpg, importHtml, fileInput,
       allergenOptions, addAllergen, removeAllergen, handleImageUpload, handleBgUpload, viewportRef,
       onDragStart, onDragEnd, onDrop, setDropTarget, draggedOverInfo, isDragging,
       panX, panY, zoom, startDrag, doDrag, stopDrag, handleWheel, startDragTouch, doDragTouch, resetView
