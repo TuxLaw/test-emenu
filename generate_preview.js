@@ -41,9 +41,9 @@ window.getMenuCss = (styles) => `
   --padding-card: 0.2rem 0.4rem;
   --padding-pill: 0.1rem 0.5rem;
 
-  --blur-header-footer: 10px;
+  --blur-header-footer: ${styles.cardBlur === false ? 0 : 10}px;
   --blur-card: ${styles.cardBlur === false ? 0 : 15}px;
-  --blur-pill: 5px;
+  --blur-pill: ${styles.cardBlur === false ? 0 : 5}px;
 
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-pill: 0 1px 1px rgba(0, 0, 0, 0.5);
