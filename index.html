@@ -7,8 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-  <!-- HTML2Canvas PNG-kuvien luontiin -->
+  
+  <!-- HTML2Canvas kuvien luontiin -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script src="generate_preview.js"></script>
@@ -31,7 +31,7 @@
   <!-- VASEN PANEELI: EDITOR -->
   <div class="w-full md:w-[500px] flex flex-col h-[75vh] md:h-full border-t md:border-t-0 md:border-r border-gray-700 bg-gray-800 shrink-0 shadow-2xl z-10 select-auto overflow-hidden">
 
-    <!-- Tiiviimpi yläpalkki ilman otsikkoa -->
+    <!-- Tiiviimpi yläpalkki -->
     <div class="p-3 border-b border-gray-700 flex flex-wrap gap-2 justify-between items-center bg-gray-900 shadow-md z-20">
       <button @click="clearMenu" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded shadow transition text-xs font-bold uppercase" title="Tyhjennä koko ruokalista">
         <i class="fa-solid fa-trash"></i> <span class="hidden sm:inline ml-1">Tyhjennä</span>
@@ -43,8 +43,8 @@
         <button @click="exportHtml" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded shadow transition text-xs font-bold uppercase" title="Vie HTML koodina">
           <i class="fa-solid fa-file-code mr-1"></i> HTML
         </button>
-        <button @click="exportPng" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded shadow transition text-xs font-bold uppercase" title="Tallenna esikatselu PNG-kuvana">
-          <i class="fa-solid fa-image mr-1"></i> PNG
+        <button @click="exportJpg" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded shadow transition text-xs font-bold uppercase" title="Tallenna esikatselu JPG-kuvana">
+          <i class="fa-solid fa-image mr-1"></i> JPG
         </button>
       </div>
     </div>
@@ -128,11 +128,11 @@
               </button>
             </div>
           </div>
-
+          
           <!-- KORTTIEN ASETUKSET -->
           <div class="pt-2 border-t border-gray-700">
             <div class="flex items-center justify-between mb-3 mt-1">
-              <label class="block text-gray-400 text-xs font-bold uppercase">Korttien sumennus (Blur)</label>
+              <label class="block text-gray-400 text-xs font-bold uppercase">Sumennus (Kortit & Palkit)</label>
               <button @click="state.styles.cardBlur = !state.styles.cardBlur"
                       :class="state.styles.cardBlur ? 'bg-blue-600' : 'bg-gray-600'"
                       class="relative inline-flex h-5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none">
@@ -182,12 +182,12 @@
         </div>
 
         <div class="space-y-1">
-          <!-- Kortit loopataan. KÄÄRITTY YHTEEN DIVIIN DROP-ZONE:N KANSSA LOKIIKAN KORJAAMISEKSI -->
+          <!-- Kortit loopataan. KÄÄRITTY YHTEEN DIVIIN DROP-ZONE:N KANSSA -->
           <div v-for="(card, cardIndex) in col.cards" :key="card.id"
                @dragenter.prevent="setDropTarget(colIndex, cardIndex)"
                @dragover.prevent
                @drop.prevent="onDrop($event, colIndex, cardIndex)">
-
+            
             <!-- Drag & Drop placeholder kortin YLÄPUOLELLA -->
             <div class="drop-zone overflow-hidden transition-all duration-200 ease-in-out pointer-events-none"
                  :class="(draggedOverInfo.colIndex === colIndex && draggedOverInfo.cardIndex === cardIndex) ? 'h-16 opacity-100 mb-2' : 'h-0 opacity-0 mb-0'">
@@ -203,32 +203,29 @@
                    draggable="true"
                    @dragstart="onDragStart($event, colIndex, cardIndex)"
                    @dragend="onDragEnd">
-
+                   
                 <div class="flex items-center gap-2 flex-1 truncate mr-2">
-                  <!-- Laajenna-nappi vasemmalle -->
                   <button @click.stop="card.expanded = !card.expanded" class="bg-gray-600 hover:bg-gray-500 px-2 py-1.5 rounded transition shrink-0" :title="card.expanded ? 'Pienennä' : 'Laajenna'">
                     <i class="fa-solid text-xs w-3 text-center" :class="card.expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                   </button>
-
-                  <!-- Drag Handle ja Otsikko -->
+                  
                   <span class="font-bold text-gray-300 cursor-move flex items-center gap-2 select-none truncate flex-1" title="Raahaa järjestääksesi">
                     <i class="fa-solid fa-grip-vertical text-gray-500 hover:text-white transition px-1 py-1"></i>
                     <span class="truncate">{{ card.name || 'Nimetön' }}</span>
                   </span>
                 </div>
-
+                
                 <div class="flex items-center shrink-0">
                   <button @click.stop="moveCard(colIndex, cardIndex, -1)" class="bg-gray-600 hover:bg-gray-500 px-2 py-1.5 rounded-l transition" title="Siirrä ylös"><i class="fa-solid fa-arrow-up text-xs"></i></button>
                   <button @click.stop="moveCard(colIndex, cardIndex, 1)" class="bg-gray-600 hover:bg-gray-500 px-2 py-1.5 rounded-r transition border-l border-gray-700" title="Siirrä alas"><i class="fa-solid fa-arrow-down text-xs"></i></button>
-
-                  <!-- Tyhjä väli ennen poistoa -->
+                  
                   <div class="w-6"></div>
-
+                  
                   <button @click.stop="col.cards.splice(cardIndex, 1)" class="bg-red-600/80 hover:bg-red-500 px-2 py-1.5 rounded transition" title="Poista"><i class="fa-solid fa-trash text-xs"></i></button>
                 </div>
               </div>
 
-              <!-- Kortin sisältö (piilotettu oletuksena) -->
+              <!-- Kortin sisältö -->
               <div v-show="card.expanded" class="space-y-3">
                 <div class="flex gap-2">
                   <div class="flex-1">
@@ -391,7 +388,7 @@
 </div>
 
 <script>
-const { createApp, reactive, computed, ref, onMounted } = Vue;
+const { createApp, reactive, computed, ref, onMounted, watch } = Vue;
 
 createApp({
   setup() {
@@ -455,7 +452,7 @@ createApp({
     const setDropTarget = (colIndex, cardIndex) => {
       const startCol = draggedCardInfo.value.colIndex;
       const startIndex = draggedCardInfo.value.cardIndex;
-      if (startCol === null) return;
+      if (startCol === null) return; 
 
       // Ei näytetä drop zonea jos se ei johda mihinkään visuaaliseen muutokseen
       if (startCol === colIndex && (cardIndex === startIndex || cardIndex === startIndex + 1)) {
@@ -473,10 +470,9 @@ createApp({
     };
 
     const onDrop = (e, colIndex, cardIndex) => {
-      e.preventDefault();
       const startCol = draggedCardInfo.value.colIndex;
       const startIndex = draggedCardInfo.value.cardIndex;
-
+      
       draggedOverInfo.value = { colIndex: null, cardIndex: null };
 
       if (startCol !== null && startIndex !== null) {
@@ -487,7 +483,7 @@ createApp({
         if (startCol === colIndex) {
           if (startIndex === cardIndex) return;
           sourceArr.splice(startIndex, 1);
-
+          
           let targetIndex = cardIndex;
           // Koska poistettiin ylempää, kaikki sen jälkeiset indeksit tippuivat yhdellä
           if (startIndex < cardIndex) {
@@ -691,8 +687,8 @@ createApp({
         fontSizeBars: 24,
         bgImage: '',
         bgColor: '#4c7253',
-        cardBlur: false,
-        cardBgAlpha: 0.9
+        cardBlur: false, 
+        cardBgAlpha: 0.9 
       },
       header: {
         title: "Kokoa oma annos 4-7:stä eri herkusta",
@@ -849,7 +845,7 @@ createApp({
             if (bgImageMatch && bgImageMatch[1].startsWith('data:')) {
                 state.styles.bgImage = bgImageMatch[1];
             }
-
+            
             const blurMatch = cssText.match(/--blur-card:\s*(\d+)px/);
             if (blurMatch) {
               state.styles.cardBlur = parseInt(blurMatch[1], 10) > 0;
@@ -915,9 +911,9 @@ createApp({
                 const imgAttr = domCard.getAttribute('data-image');
                 const image = imgAttr || '';
 
-                return {
-                  id: generateId(),
-                  name, desc, allergen, allergens, newAllergen: '', customAllergen: '', price, pills, image, expanded: false
+                return { 
+                  id: generateId(), 
+                  name, desc, allergen, allergens, newAllergen: '', customAllergen: '', price, pills, image, expanded: false 
                 };
               });
 
@@ -951,27 +947,37 @@ createApp({
       e.target.value = '';
     };
 
-    const exportPng = () => {
+    const exportPng = async () => {
       const iframe = document.querySelector('iframe');
       if (!iframe || !iframe.contentDocument) return;
 
-      setTimeout(async () => {
-        try {
-          const canvas = await window.html2canvas(iframe.contentDocument.body, {
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: state.styles.bgColor || '#111827',
-            scale: 2 // Tuottaa parempilaatuisen kuvan
-          });
-          const link = document.createElement('a');
-          link.download = 'menu.png';
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-        } catch (error) {
-          console.error("PNG export error:", error);
-          alert("PNG-kuvan luonti epäonnistui.");
+      try {
+        if (iframe.contentWindow.document.fonts) {
+          await iframe.contentWindow.document.fonts.ready;
         }
-      }, 100);
+        if (document.fonts) {
+          await document.fonts.ready;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        const canvas = await window.html2canvas(iframe.contentDocument.body, {
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: state.styles.bgColor || '#111827',
+          scale: 2, 
+          windowWidth: 1920,
+          windowHeight: 1080
+        });
+
+        const link = document.createElement('a');
+        link.download = 'menu.jpg';
+        link.href = canvas.toDataURL('image/jpeg', 1.0);
+        link.click();
+      } catch (error) {
+        console.error("JPG export error:", error);
+        alert("JPG-kuvan luonti epäonnistui.");
+      }
     };
 
     const googleFontsUrl = computed(() => {
@@ -981,6 +987,18 @@ createApp({
       const familyParams = families.map(f => `family=${f}:ital,wght@0,400;0,700;1,400;1,700`).join('&');
       return `https://fonts.googleapis.com/css2?${familyParams}&display=swap`;
     });
+
+    // Pakottaa selaimen lataamaan fontit myös parenttiin JPG vientiä varten
+    watch(googleFontsUrl, (newUrl) => {
+      let link = document.getElementById('dynamic-google-fonts');
+      if (!link) {
+        link = document.createElement('link');
+        link.id = 'dynamic-google-fonts';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+      link.href = newUrl;
+    }, { immediate: true });
 
     const generatedHtml = computed(() => {
       JSON.stringify(state.styles); // Trigger Vue reactivity
@@ -1026,7 +1044,7 @@ createApp({
     };
 
     return {
-      state, activeTab, tabClass, addCard, moveCard, clearMenu, generatedHtml, exportHtml, exportPng, importHtml, fileInput,
+      state, activeTab, tabClass, addCard, moveCard, clearMenu, generatedHtml, exportHtml, exportJpg: exportPng, importHtml, fileInput,
       allergenOptions, addAllergen, removeAllergen, handleImageUpload, handleBgUpload, viewportRef,
       onDragStart, onDragEnd, onDrop, setDropTarget, draggedOverInfo, isDragging,
       panX, panY, zoom, startDrag, doDrag, stopDrag, handleWheel, startDragTouch, doDragTouch, resetView
